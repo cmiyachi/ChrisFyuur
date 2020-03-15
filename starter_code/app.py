@@ -217,6 +217,7 @@ class Artist(db.Model):
             "name": "Guns N Petals",
             "genres": ["Rock n Roll"],
             "city": "San Francisco",
+            "state": "CA",
             "phone": "326-123-5000",
             "website": "https://www.gunsnpetalsband.com",
             "facebook_link": "https://www.facebook.com/GunsNPetals",
@@ -228,6 +229,7 @@ class Artist(db.Model):
             "name": "Matt Quevedo",
             "genres": ["Jazz"],
             "city": "New York",
+            "state": "NY",
             "phone": "300-400-5000",
             "facebook_link": "https://www.facebook.com/mattquevedo923251523",
             "seeking_venue": False,
@@ -237,7 +239,8 @@ class Artist(db.Model):
         data3 = {
             "name": "The Wild Sax Band",
             "genres": ["Jazz", "Classical"],
-            "city": "San Francisco",    
+            "city": "San Francisco",
+            "state": "CA",    
             "phone": "432-325-5432",
             "seeking_venue": False,
             "image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80"
@@ -268,6 +271,9 @@ class Artist(db.Model):
 
     @property
     def serialize_with_shows_details(self):
+        print('***&&&')
+        print(self.image_link)
+        print('***&&&')
         return {'id': self.id,
                 'name': self.name,
                 'city': self.city,
@@ -383,7 +389,9 @@ class Show(db.Model):
     @property
     def serialize_with_artist_venue(self):
         print("&&&&&&&&&&&&&&&&&&&&&&&&&&")
-        print(self.start_time) #.strftime("%m/%d/%Y, %H:%M:%S"))
+        # print(self.start_time) #.strftime("%m/%d/%Y, %H:%M:%S"))
+        print([v.serialize for v in Venue.query.filter(Venue.id == self.venue_id).all()][0])
+        print("AFTER&&&&&&&&&&&&&&&&&&&&&&&&&&")
         return {'id': self.id,
                 'start_time': self.start_time, #.strftime("%m/%d/%Y, %H:%M:%S"),
                 'venue': [v.serialize for v in Venue.query.filter(Venue.id == self.venue_id).all()][0],
@@ -679,18 +687,30 @@ def create_artist_submission():
   # TODO: insert form data as a new Venue record in the db, instead DONE
   # TODO: modify data to be the data object returned from db insertion DONE
   artist_form = ArtistForm(request.form)
-
+  genres=','.join(artist_form.genres.data)
+  name=artist_form.name.data    
+  city=artist_form.city.data
+  state=artist_form.state.data
+  phone=artist_form.phone.data
+  facebook_link=artist_form.facebook_link.data
+  image_link=artist_form.image_link.data
+  print(genres)
+  print(name)
+  print(city)
+  print(state)
+  print(phone)
+  print(facebook_link)
+  print(image_link)
   try:
       new_artist = Artist(
           name=artist_form.name.data,
           genres=','.join(artist_form.genres.data),
-          address=artist_form.address.data,
           city=artist_form.city.data,
           state=artist_form.state.data,
           phone=artist_form.phone.data,
           facebook_link=artist_form.facebook_link.data,
           image_link=artist_form.image_link.data)
-
+      print(new_artist.genres)
       new_artist.add()
       # on successful db insert, flash success
       flash('Artist ' + request.form['name'] + ' was successfully listed!')
