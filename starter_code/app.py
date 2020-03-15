@@ -61,7 +61,7 @@ class Venue(db.Model):
     website = db.Column(db.String(120))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate DONE
-    def seed_data(self):
+    def populate(self):
         Venue.query.delete()
 
         data1 = {
@@ -124,7 +124,7 @@ class Venue(db.Model):
         return '<Venue %r>' % self
 
     @property
-    def serialize(self):
+    def jsonify(self):
         return {'id': self.id,
                 'name': self.name,
                 'genres': self.genres.split(','),
@@ -140,7 +140,7 @@ class Venue(db.Model):
                 }
 
     @property
-    def serialize_with_upcoming_shows_count(self):
+    def jsonify_shows_count(self):
         return {'id': self.id,
                 'name': self.name,
                 'city': self.city,
@@ -158,7 +158,7 @@ class Venue(db.Model):
                 }
 
     @property
-    def serialize_with_shows_details(self):
+    def jsonify_shows(self):
         return {'id': self.id,
                 'name': self.name,
                 'city': self.city,
@@ -170,10 +170,10 @@ class Venue(db.Model):
                 'seeking_talent': self.seeking_talent,
                 'seeking_description': self.seeking_description,
                 'website': self.website,
-                'upcoming_shows': [show.serialize_with_artist_venue for show in Show.query.filter(
+                'upcoming_shows': [show.jsonify_artist_venue for show in Show.query.filter(
                     Show.start_time > str(datetime.datetime.now()),
                     Show.venue_id == self.id).all()],
-                'past_shows': [show.serialize_with_artist_venue for show in Show.query.filter(
+                'past_shows': [show.jsonify_artist_venue for show in Show.query.filter(
                     Show.start_time < str(datetime.datetime.now()),
                     Show.venue_id == self.id).all()],
                 'upcoming_shows_count': len(Show.query.filter(
@@ -188,7 +188,7 @@ class Venue(db.Model):
     def filter_on_city_state(self):
         return {'city': self.city,
                 'state': self.state,
-                'venues': [v.serialize_with_upcoming_shows_count
+                'venues': [v.jsonify_shows_count
                            for v in Venue.query.filter(Venue.city == self.city,
                                                        Venue.state == self.state).all()]}
 
@@ -210,7 +210,7 @@ class Artist(db.Model):
     seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(500))
     
-    def seed_data(self):
+    def populate(self):
         Artist.query.delete()
 
         data1 = {
@@ -270,7 +270,7 @@ class Artist(db.Model):
         return '<Artist %r>' % self
 
     @property
-    def serialize_with_shows_details(self):
+    def jsonify_shows(self):
         print('***&&&')
         print(self.image_link)
         print('***&&&')
@@ -285,10 +285,10 @@ class Artist(db.Model):
                 'seeking_venue': self.seeking_venue,
                 'seeking_description': self.seeking_description,
                 'website': self.website,
-                'upcoming_shows': [show.serialize_with_artist_venue for show in Show.query.filter(
+                'upcoming_shows': [show.jsonify_artist_venue for show in Show.query.filter(
                     Show.start_time > str(datetime.datetime.now()),
                     Show.artist_id == self.id).all()],
-                'past_shows': [show.serialize_with_artist_venue for show in Show.query.filter(
+                'past_shows': [show.jsonify_artist_venue for show in Show.query.filter(
                     Show.start_time < str(datetime.datetime.now()),
                     Show.artist_id == self.id).all()],
                 'upcoming_shows_count': len(Show.query.filter(
@@ -300,7 +300,7 @@ class Artist(db.Model):
                 }
 
     @property
-    def serialize(self):
+    def jsonify(self):
         return {'id': self.id,
                 'name': self.name,
                 'city': self.city,
@@ -329,7 +329,7 @@ class Show(db.Model):
     artist = db.relationship(
         'Artist', backref=db.backref('shows', cascade='all, delete'))
     
-    def seed_data(self):
+    def populate(self):
         Show.query.delete()
 
         data = [{
@@ -377,9 +377,8 @@ class Show(db.Model):
         return '<Show %r>' % self
 
     @property
-    def serialize(self):
-        print('+++++++++++++++++++++++')
-        print(self.start_time) #.strftime("%m/%d/%Y, %H:%M:%S"))
+    def jsonify(self):
+        #print(self.start_time) #.strftime("%m/%d/%Y, %H:%M:%S"))
         return {'id': self.id,
                 'start_time': self.start_time, #.strftime("%m/%d/%Y, %H:%M:%S"),
                 'venue_id': self.venue_id,
@@ -387,15 +386,12 @@ class Show(db.Model):
                 }
 
     @property
-    def serialize_with_artist_venue(self):
-        print("&&&&&&&&&&&&&&&&&&&&&&&&&&")
+    def jsonify_artist_venue(self):
         # print(self.start_time) #.strftime("%m/%d/%Y, %H:%M:%S"))
-        print([v.serialize for v in Venue.query.filter(Venue.id == self.venue_id).all()][0])
-        print("AFTER&&&&&&&&&&&&&&&&&&&&&&&&&&")
         return {'id': self.id,
                 'start_time': self.start_time, #.strftime("%m/%d/%Y, %H:%M:%S"),
-                'venue': [v.serialize for v in Venue.query.filter(Venue.id == self.venue_id).all()][0],
-                'artist': [a.serialize for a in Artist.query.filter(Artist.id == self.artist_id).all()][0]
+                'venue': [v.jsonify for v in Venue.query.filter(Venue.id == self.venue_id).all()][0],
+                'artist': [a.jsonify for a in Artist.query.filter(Artist.id == self.artist_id).all()][0]
                 }
 
 #----------------------------------------------------------------------------#
@@ -431,17 +427,17 @@ def index():
 #  Used to populate the database with initial data
 #-----------------------------------------------------------------------------
 
-@app.route('/seed')
-def seed():
+@app.route('/populate')
+def populate():
 
     venue = Venue()
-    venue.seed_data()
+    venue.populate()
 
     artist = Artist()
-    artist.seed_data()
+    artist.populate()
 
     show = Show()
-    show.seed_data()
+    show.populate()
     return redirect(url_for('index'))
 #  Venues
 #  ----------------------------------------------------------------
@@ -473,7 +469,7 @@ def search_venues():
   count_venues = len(venues)
   response = {
       "count": count_venues,
-      "data": [v.serialize for v in venues]
+      "data": [v.jsonify for v in venues]
   }
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
@@ -488,8 +484,7 @@ def show_venue(venue_id):
   if venues is None:
       abort(404)
 
-  # data = [v.serialize_with_upcoming_shows_count for v in venues][0]
-  data = venues.serialize_with_shows_details
+  data = venues.jsonify_shows
   return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
@@ -556,7 +551,7 @@ def delete_venue(venue_id):
 def artists():
   # TODO: replace with real data returned from querying the database DONE
   artists = Artist.query.all()
-  data = [artist.serialize_with_shows_details for artist in artists]
+  data = [artist.jsonify_shows for artist in artists]
   return render_template('pages/artists.html', artists=data)
 
 @app.route('/artists/search', methods=['POST'])
@@ -578,7 +573,7 @@ def search_artists():
   count_artists = len(artists)
   response = {
       "count": count_artists,
-      "data": [a.serialize for a in artists]
+      "data": [a.jsonify for a in artists]
   }
   return render_template('pages/search_artists.html', results=response, search_term=request.form.get('search_term', ''))
 
@@ -591,7 +586,7 @@ def show_artist(artist_id):
   if artist is None:
       abort(404)
 
-  data = artist.serialize_with_shows_details
+  data = artist.jsonify_shows
   # data = list(filter(lambda d: d['id'] == artist_id, [data1, data2, data3]))[0]
   return render_template('pages/show_artist.html', artist=data)
 
@@ -607,7 +602,7 @@ def edit_artist(artist_id):
   if artist_to_update is None:
       abort(404)
 
-  artist = artist_to_update.serialize
+  artist = artist_to_update.jsonify
   form = ArtistForm(data=artist)
   # TODO: populate form with fields from artist with ID <artist_id> DONE
   return render_template('forms/edit_artist.html', form=form, artist=artist)
@@ -645,7 +640,7 @@ def edit_venue(venue_id):
   if venue_to_update is None:
       abort(404)
 
-  venue = venue_to_update.serialize
+  venue = venue_to_update.jsonify
   form = VenueForm(data=venue)
   return render_template('forms/edit_venue.html', form=form, venue=venue)
 
@@ -734,7 +729,7 @@ def shows():
   # TODO: replace with real venues data. DONE
   #       num_shows should be aggregated based on number of upcoming shows per venue.
   shows = Show.query.all()
-  data = [show.serialize_with_artist_venue for show in shows]
+  data = [show.jsonify_artist_venue for show in shows]
   print(data)
   return render_template('pages/shows.html', shows=data)
 
