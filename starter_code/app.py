@@ -5,7 +5,7 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -106,18 +106,6 @@ class Venue(db.Model):
             venue = Venue(**data)
             db.session.add(venue)
 
-        db.session.commit()
-
-    def add(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self):
-        db.session.update(self)
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
         db.session.commit()
 
     def __repr__(self):
@@ -251,29 +239,16 @@ class Artist(db.Model):
         for data in artists:
             artist = Artist(**data)
             db.session.add(artist)
+            
 
         db.session.commit()
 
-    def add(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self):
-        db.session.update(self)
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
 
     def __repr__(self):
         return '<Artist %r>' % self
 
     @property
     def jsonify_shows(self):
-        print('***&&&')
-        print(self.image_link)
-        print('***&&&')
         return {'id': self.id,
                 'name': self.name,
                 'city': self.city,
@@ -361,18 +336,6 @@ class Show(db.Model):
         db.session.commit()
 
 
-    def add(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self):
-        db.session.update(self)
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
-
     def __repr__(self):
         return '<Show %r>' % self
 
@@ -399,10 +362,10 @@ class Show(db.Model):
 #----------------------------------------------------------------------------#
 
 def format_datetime(value, format='medium'):
-    print('&*&*&*&*&*&*&*&*****************')
+  #  print('&*&*&*&*&*&*&*&*****************')
   #  print(value.strftime("%m/%d/%Y, %H:%M:%S"))
-    print('xxxxxxxxxxxxxxx')
-    print(value)    
+   # print('xxxxxxxxxxxxxxx')
+   # print(value)    
     return(value)
 
 def format_datetime2(value, format='medium'):
@@ -448,7 +411,6 @@ def venues():
   #       num_shows should be aggregated based on number of upcoming shows per venue.  DONE
   unique_city_states = Venue.query.distinct(Venue.city, Venue.state).all()
   data = [ucs.filter_on_city_state for ucs in unique_city_states]
-  print(data)
   return render_template('pages/venues.html', areas=data);
 
 @app.route('/venues/search', methods=['POST'])
@@ -515,7 +477,9 @@ def create_venue_submission():
           image_link=venue_form.image_link.data)
           # TODO:  Add website???
 
-      new_venue.add()
+      db.session.add(new_venue)
+      db.session.commit()
+
       # on successful db insert, flash success
       flash('Venue ' +
             request.form['name'] +
@@ -538,12 +502,18 @@ def delete_venue(venue_id):
   # clicking that button delete it from the db then redirect the user to the homepage
   try:
       venue_to_delete = Venue.query.filter(Venue.id == venue_id).one()
-      venue_to_delete.delete()
-      flask("Venue {0} has been deleted successfully".format(
-          venue_to_delete[0]['name']))
-  except NoResultFound:
-      abort(404)
-  return None
+      db.session.delete(venue_to_delete)
+      db.session.commit()
+
+      flash("Venue {0} has been deleted successfully".format(venue_to_delete.name))
+      #  venue_to_delete[0]['name']))
+  except:
+    db.session.rollback()
+  finally:
+    db.session.close()
+ # except NoResultFound:
+     # abort(404)
+  return None #render_template('pages/home.html')
 
 #  Artists
 #  ----------------------------------------------------------------
@@ -621,7 +591,9 @@ def edit_artist_submission(artist_id):
       artist.phone = form.phone.data,
       artist.facebook_link = form.facebook_link.data,
       artist.image_link = form.image_link.data,
-      artist.update()
+
+      db.session.update(artist)
+      db.session.commit()
       # on successful db insert, flash success
       flash('Artist ' + request.form['name'] + ' was successfully updated!')
   except Exception as e:
@@ -659,7 +631,9 @@ def edit_venue_submission(venue_id):
       venue.phone = form.phone.data,
       venue.facebook_link = form.facebook_link.data,
       venue.image_link = form.image_link.data,
-      venue.update()
+
+      db.session.update(venue)
+      db.session.commit()
       # on successful db insert, flash success
       flash('Venue ' + request.form['name'] + ' was successfully updated!')
   except Exception as e:
@@ -681,21 +655,6 @@ def create_artist_submission():
   # called upon submitting the new artist listing form
   # TODO: insert form data as a new Venue record in the db, instead DONE
   # TODO: modify data to be the data object returned from db insertion DONE
-  artist_form = ArtistForm(request.form)
-  genres=','.join(artist_form.genres.data)
-  name=artist_form.name.data    
-  city=artist_form.city.data
-  state=artist_form.state.data
-  phone=artist_form.phone.data
-  facebook_link=artist_form.facebook_link.data
-  image_link=artist_form.image_link.data
-  print(genres)
-  print(name)
-  print(city)
-  print(state)
-  print(phone)
-  print(facebook_link)
-  print(image_link)
   try:
       new_artist = Artist(
           name=artist_form.name.data,
@@ -705,8 +664,10 @@ def create_artist_submission():
           phone=artist_form.phone.data,
           facebook_link=artist_form.facebook_link.data,
           image_link=artist_form.image_link.data)
-      print(new_artist.genres)
-      new_artist.add()
+
+      db.session.add(new_artist)
+      db.session.commit()
+      
       # on successful db insert, flash success
       flash('Artist ' + request.form['name'] + ' was successfully listed!')
   except Exception as ex:
@@ -730,7 +691,6 @@ def shows():
   #       num_shows should be aggregated based on number of upcoming shows per venue.
   shows = Show.query.all()
   data = [show.jsonify_artist_venue for show in shows]
-  print(data)
   return render_template('pages/shows.html', shows=data)
 
 @app.route('/shows/create')
@@ -750,7 +710,10 @@ def create_show_submission():
           venue_id=show_form.venue_id.data,
           start_time=show_form.start_time.data
       )
-      show.add()
+
+      db.session.add(show)
+      db.session.commit()
+
       # on successful db insert, flash success
       flash('Show was successfully listed!')
   except Exception as e:

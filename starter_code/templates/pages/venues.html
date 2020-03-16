@@ -12,8 +12,26 @@
 					<h5>{{ venue.name }}</h5>
 				</div>
 			</a>
+			<button class="delete-button" data-id="{{ venue.id }}">&cross;</button>
 		</li>
 		{% endfor %}
 	</ul>
 {% endfor %}
+<script>
+	const deleteBtns = document.querySelectorAll('.delete-button');
+	for (let i = 0; i < deleteBtns.length; i++) {
+	  const btn = deleteBtns[i];
+	  btn.onclick = function(e) {
+		const venueId = e.target.dataset['id'];
+		console.log("Venue"+venueId)
+		fetch('/venues/' + venueId, {
+		  method: 'DELETE'
+		})
+		.then(function() {
+		  const item = e.target.parentElement;
+		  item.remove();
+		}) 
+	  }
+	}
+</script>
 {% endblock %}
